@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanksgiving Dinner Plan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- Chosen Palette: Warm Neutrals with Emerald Accent -->
+    <!-- Application Structure Plan: I've designed this as an interactive dashboard, not just a static report. The original plan's sections are reorganized into four task-oriented tabs: 1) A 'Dashboard' for a high-level overview, key metrics, and a project timeline (Gantt-style chart). 2) An interactive 'Task List' with collapsible sections and progress tracking. 3) A focused 'Event Day' timeline. 4) A 'Roles & Supplies' section for checklists. This structure transforms the static plan into a usable project management tool, allowing the host to track progress and reference key info easily. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Project phase durations (e.g., Phase 1: ASAP-Nov 20). Goal: Visualize timeline. Viz: Horizontal Bar Chart (Gantt-style). Interaction: Hover tooltips. Justification: Provides an immediate visual understanding of the project's schedule. Library: Chart.js.
+        - Report Info: All tasks from Phases 1-4. Goal: Track completion. Presentation: Interactive checklists. Interaction: Clickable checkboxes. Justification: Transforms the plan into a functional to-do list. Method: HTML/JS.
+        - Report Info: Task completion status. Goal: Show overall progress. Viz: HTML Progress Bar. Interaction: Updates dynamically when any task checkbox is clicked. Justification: Motivates the user and shows progress at a glance. Method: HTML/JS.
+        - Report Info: Non-Food Supply List. Goal: Track shopping. Presentation: Interactive checklist. Interaction: Clickable checkboxes. Justification: Creates a usable, interactive shopping list. Method: HTML.
+        - Report Info: Main content sections. Goal: Organize the app. Presentation: Tab-based navigation. Interaction: Click to show/hide sections. Justification: Prevents a single, long scrolling page and allows for focused views. Method: HTML/JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 50vh;
+        }
+        .nav-tab {
+            @apply px-4 py-3 text-sm font-medium text-center text-gray-500 border-b-2 border-transparent cursor-pointer hover:text-gray-700 hover:border-gray-300;
+        }
+        .nav-tab.active {
+            @apply text-emerald-600 border-emerald-600;
+        }
+        .task-checkbox, .supply-checkbox {
+            @apply w-5 h-5 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500 focus:ring-2;
+        }
+        details summary {
+            cursor: pointer;
+            @apply text-xl font-semibold text-gray-800;
+        }
+        details[open] summary {
+            @apply mb-2;
+        }
+        progress {
+            @apply w-full h-3 rounded-full overflow-hidden;
+        }
+        progress::-webkit-progress-bar {
+            @apply bg-gray-200;
+        }
+        progress::-webkit-progress-value {
+            @apply bg-emerald-600;
+        }
+        progress::-moz-progress-bar {
+            @apply bg-emerald-600;
+        }
+    </style>
+</head>
+<body class="bg-amber-50 text-stone-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-emerald-800">Thanksgiving Dinner Plan</h1>
+            <p class="text-lg text-gray-600 mt-2">Wentworth Green Clubhouse | Thursday, November 27, 2025</p>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="border-b border-gray-200 mb-8">
+            <ul class="flex flex-wrap -mb-px" id="nav-tabs">
+                <li><button class="nav-tab active" data-target="dashboard">Dashboard</button></li>
+                <li><button class="nav-tab" data-target="tasks">Task List</button></li>
+                <li><button class="nav-tab" data-target="eventday">Event Day</button></li>
+                <li><button class="nav-tab" data-target="roles">Roles & Supplies</button></li>
+            </ul>
+        </nav>
+
+        <!-- Content Sections -->
+        <main id="content-container">
+
+            <!-- Dashboard -->
+            <section id="content-dashboard" class="space-y-8">
+                <p class="text-lg text-gray-700">A high-level overview of your Thanksgiving plan. See key dates, upcoming tasks, and the project timeline at a glance.</p>
+                
+                <!-- Key Metrics -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Estimated Guests</h3>
+                        <p class="text-4xl font-bold text-emerald-700 mt-2">30-40</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">RSVP Deadline</h3>
+                        <p class="text-4xl font-bold text-emerald-700 mt-2">Nov 20</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Days to Go</h3>
+                        <p id="days-to-go" class="text-4xl font-bold text-emerald-700 mt-2">--</p>
+                    </div>
+                </div>
+
+                <!-- Timeline Chart -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Project Timeline</h2>
+                    <div class="chart-container">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Task List -->
+            <section id="content-tasks" class="hidden space-y-8">
+                <p class="text-lg text-gray-700">Your complete to-do list. Check off tasks as you complete them to track your progress.</p>
+                
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-2">Overall Progress</h3>
+                    <progress id="task-progress" max="100" value="0" class="w-full"></progress>
+                </div>
+
+                <!-- Phase 1 -->
+                <details class="bg-white p-6 rounded-lg shadow-md" open>
+                    <summary>Phase 1: Venue & Logistics (ASAP)</summary>
+                    <div class="overflow-x-auto mt-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Book Clubhouse</td>
+                                    <td class="px-6 py-4">ASAP</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Get Access Details</td>
+                                    <td class="px-6 py-4">Nov 20</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Facility Assessment</td>
+                                    <td class="px-6 py-4">Nov 1</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Rental Needs</td>
+                                    <td class="px-6 py-4">Nov 7</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Place Rental Order</td>
+                                    <td class="px-6 py-4">Nov 14</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <!-- Phase 2 -->
+                <details class="bg-white p-6 rounded-lg shadow-md">
+                    <summary>Phase 2: Budget & Menu Planning (Now - Nov 10)</summary>
+                    <div class="overflow-x-auto mt-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Set Budget</td>
+                                    <td class="px-6 py-4">Nov 1</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Decide Menu Style</td>
+                                    <td class="px-6 py-4">Nov 1</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Finalize Menu</td>
+                                    <td class="px-6 py-4">Nov 7</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Create Potluck Signup</td>
+                                    <td class="px-6 py-4">Nov 7</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Order Turkey(s)</td>
+                                    <td class="px-6 py-4">Nov 10</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Order Catering</td>
+                                    <td class="px-6 py-4">Nov 10</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <!-- Phase 3 -->
+                <details class="bg-white p-6 rounded-lg shadow-md">
+                    <summary>Phase 3: Guest Management (Now - Nov 20)</summary>
+                    <div class="overflow-x-auto mt-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Create Guest List</td>
+                                    <td class="px-6 py-4">Nov 1</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Send Invitations</td>
+                                    <td class="px-6 py-4">Nov 3</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Track RSVPs</td>
+                                    <td class="px-6 py-4">Nov 20</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Final Headcount</td>
+                                    <td class="px-6 py-4">Nov 21</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <!-- Phase 4 -->
+                <details class="bg-white p-6 rounded-lg shadow-md">
+                    <summary>Phase 4: Supplies & Prep (Nov 21 - Nov 26)</summary>
+                    <div class="overflow-x-auto mt-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Create Master Shopping List</td>
+                                    <td class="px-6 py-4">Nov 21</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Shop for Non-Food</td>
+                                    <td class="px-6 py-4">Nov 22</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Shop for Non-Perishables</td>
+                                    <td class="px-6 py-4">Nov 24</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Shop for Perishables</td>
+                                    <td class="px-6 py-4">Nov 26</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Pick up Turkey</td>
+                                    <td class="px-6 py-4">Nov 25</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Prep Food</td>
+                                    <td class="px-6 py-4">Nov 26</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4"><input type="checkbox" class="task-checkbox"></td>
+                                    <td class="px-6 py-4 font-medium">Pack "Go-Box"</td>
+                                    <td class="px-6 py-4">Nov 26</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            </section>
+
+            <!-- Event Day -->
+            <section id="content-eventday" class="hidden">
+                <p class="text-lg text-gray-700 mb-8">Your minute-by-minute guide for Thanksgiving Day. Keep this handy to stay on schedule.</p>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Event Day Timeline (Nov 27)</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Task</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner(s)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr><td class="px-6 py-4 font-bold">11:00 AM</td><td class="px-6 py-4 font-bold">Setup Team Arrives</td><td class="px-6 py-4">[Team Lead]</td></tr>
+                                <tr><td class="px-6 py-4">11:00 AM</td><td class="px-6 py-4">Get key, unlock clubhouse.</td><td class="px-6 py-4">[Team Lead]</td></tr>
+                                <tr><td class="px-6 py-4">11:15 AM</td><td class="px-6 py-4">Set up tables and chairs.</td><td class="px-6 py-4">Setup Team</td></tr>
+                                <tr><td class="px-6 py-4">11:30 AM</td><td class="px-6 py-4">Put on tablecloths, set out centerpieces.</td><td class="px-6 py-4">Setup Team</td></tr>
+                                <tr><td class="px-6 py-4">11:45 AM</td><td class="px-6 py-4">Turkey in Oven</td><td class="px-6 py-4">[Turkey Chef]</td></tr>
+                                <tr><td class="px-6 py-4">12:00 PM</td><td class="px-6 py-4">Set up drink station (ice, tubs, cups).</td><td class="px-6 py-4">Setup Team</td></tr>
+                                <tr><td class="px-6 py-4">12:30 PM</td><td class="px-6 py-4">Set up buffet tables (serving dishes, labels, utensils).</td><td class="px-6 py-4">Setup Team</td></tr>
+                                <tr><td class="px-6 py-4">1:00 PM</td><td class="px-6 py-4">Set up appetizer station.</td><td class="px-6 py-4">Setup Team</td></tr>
+                                <tr><td class="px-6 py-4">1:30 PM</td><td class="px-6 py-4">Music on, lighting set.</td><td class="px-6 py-4">Setup Team</td></tr>
+                                <tr><td class="px-6 py-4">1:45 PM</td><td class="px-6 py-4">Food-drop off begins. Plug in crockpots.</td><td class="px-6 py-4">[Potluck Lead]</td></tr>
+                                <tr><td class="px-6 py-4 font-bold">2:00 PM</td><td class="px-6 py-4 font-bold">Guests Arrive. Appetizers & Drinks served.</td><td class="px-6 py-4">All</td></tr>
+                                <tr><td class="px-6 py-4">3:00 PM</td><td class="px-6 py-4">Turkey out of oven (to rest).</td><td class="px-6 py-4">[Turkey Chef]</td></tr>
+                                <tr><td class="px-6 py-4">3:15 PM</td><td class="px-6 py-4">Final hot sides onto buffet.</td><td class="px-6 py-4">[Potluck Lead]</td></tr>
+                                <tr><td class="px-6 py-4">3:25 PM</td><td class="px-6 py-4">Carve Turkey.</td><td class="px-6 py-4">[Turkey Chef]</td></tr>
+                                <tr><td class="px-6 py-4 font-bold">3:30 PM</td><td class="px-6 py-4 font-bold">Dinner is Served! (Make announcement).</td><td class="px-6 py-4">[Host]</td></tr>
+                                <tr><td class="px-6 py-4">4:30 PM</td><td class="px-6 py-4">Clear dinner plates. Set up dessert station.</td><td class="px-6 py-4">Cleanup Crew</td></tr>
+                                <tr><tcod class="px-6 py-4">5:00 PM</td><td class="px-6 py-4">Serve dessert & coffee.</td><td class="px-6 py-4">Cleanup Crew</td></tr>
+                                <tr><td class="px-6 py-4">5:30 PM</td><td class="px-6 py-4">Begin Cleanup Phase 1: Pack leftovers, consolidate trash.</td><td class="px-6 py-4">Cleanup Crew</td></tr>
+                                <tr><td class="px-6 py-4">6:00 PM</td><td class="px-6 py-4">Wash all non-disposable serving dishes.</td><td class="px-6 py-4">Cleanup Crew</td></tr>
+                                <tr><td class="px-6 py-4">6:30 PM</td><td class="px-6 py-4">Wipe down tables, stack chairs.</td><td class="px-6 py-4">Cleanup Crew</td></tr>
+                                <tr><td class="px-6 py-4">6:45 PM</td><td class="px-6 py-4">Sweep/mop floors, wipe kitchen, take trash to dumpster.</td><td class="px-6 py-4">Cleanup Crew</td></tr>
+                                <tr><td class="px-6 py-4 font-bold">7:00 PM</td><td class="px-6 py-4 font-bold">Final Walkthrough & Lock Up.</td><td class="px-6 py-4">[Host]</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Roles & Supplies -->
+            <section id="content-roles" class="hidden">
+                <p class="text-lg text-gray-700 mb-8">All your key lists in one place: who is doing what, what food guests are bringing, and what supplies you need to buy.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <!-- Roles & Potluck -->
+                    <div class="space-y-8">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Roles & Responsibilities</h2>
+                            <ul class="list-disc list-inside space-y-2 text-gray-700">
+                                <li><strong>Project Lead (Host):</strong> [Your Name] - Overall coordination, budget, venue.</li>
+                                <li><strong>Potluck Coordinator:</strong> [Name] - Manages signup sheet, reminds guests, directs food setup.</li>
+                                <li><strong>Setup Crew (3-4 people):</strong> [Names] - Arrive early for table/chair/decor setup.</li>
+                                <li><strong>Turkey Chef:</strong> [Name] - Responsible for cooking, carving, and transporting the turkey.</li>
+                                <li><strong>Cleanup Crew (All hands on deck!):</strong> Assign 3-4 "leads" to direct the cleanup.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Potluck Signup (Template)</h2>
+                            <ul class="space-y-2 text-gray-700">
+                                <li>Turkey (Host)</li>
+                                <li>Gravy (Host)</li>
+                                <li>Appetizer (1)</li>
+                                <li>Appetizer (2)</li>
+                                <li>Mashed Potatoes</li>
+                                <li>Sweet Potatoes</li>
+                                <li>Stuffing/Dressing</li>
+                                <li>Green Bean Casserole</li>
+                                <li>Other Veggie Side (e.g., Brussels Sprouts)</li>
+                                <li>Cranberry Sauce</li>
+                                <li>Rolls / Cornbread</li>
+                                <li>Pumpkin Pie</li>
+                                <li>Apple Pie / Other Dessert</li>
+                                <li>Non-Alcoholic Drinks (e.g., Cider, Soda)</li>
+                                <li>Ice</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Non-Food Supply List -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Non-Food Supply List</h2>
+                        <ul class="space-y-3">
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Disposable Plates (Appetizer & Dinner)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Disposable Bowls (for soup/dessert)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Disposable Cutlery (Forks, Knives, Spoons)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Disposable Cups (Hot & Cold)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Napkins</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Tablecloths (for serving & guest tables)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Centerpieces / Decorations</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Serving Spoons, Tongs, Ladles</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Carving Knife & Cutting Board (for turkey)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Aluminum Foil (Heavy Duty)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Plastic Wrap</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Tupperware/Ziploc bags (for leftovers)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>"To-Go" containers for guests</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Labels & Sharpies (for dishes)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Hand Soap (for kitchen/bath)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Paper Towels</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Trash Bags (Heavy Duty)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Dish Soap & Sponges</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Dish Towels</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Cooler & Ice</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Drink Tubs</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>First Aid Kit</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Fire Extinguisher (check clubhouse location)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Music (Bluetooth Speaker)</label></li>
+                            <li class="flex items-center"><input type="checkbox" class="supply-checkbox mr-3"><label>Extension Cords / Power Strips (for crockpots)</label></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const thanksgiving = new Date('2025-11-27T00:00:00');
+            const diffTime = thanksgiving - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            document.getElementById('days-to-go').textContent = diffDays > 0 ? diffDays : 0;
+
+            const tabs = document.querySelectorAll('.nav-tab');
+            const contents = {
+                dashboard: document.getElementById('content-dashboard'),
+                tasks: document.getElementById('content-tasks'),
+                eventday: document.getElementById('content-eventday'),
+                roles: document.getElementById('content-roles'),
+            };
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    Object.values(contents).forEach(c => c.classList.add('hidden'));
+                    contents[tab.dataset.target].classList.remove('hidden');
+                });
+            });
+
+            const taskCheckboxes = document.querySelectorAll('.task-checkbox');
+            const progressBar = document.getElementById('task-progress');
+            const totalTasks = taskCheckboxes.length;
+
+            function updateProgress() {
+                const checkedTasks = document.querySelectorAll('.task-checkbox:checked').length;
+                const progress = (checkedTasks / totalTasks) * 100;
+                progressBar.value = progress;
+            }
+
+            taskCheckboxes.forEach(box => {
+                box.addEventListener('change', updateProgress);
+            });
+            updateProgress();
+
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+            const timelineChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [
+                        'Phase 1: Venue', 
+                        'Phase 2: Menu', 
+                        'Phase 3: Guests', 
+                        'Phase 4: Prep',
+                        'Event Day'
+                    ],
+                    datasets: [{
+                        label: 'Project Phases',
+                        data: [
+                            [new Date('2025-10-28'), new Date('2025-11-20')], 
+                            [new Date('2025-11-01'), new Date('2025-11-10')], 
+                            [new Date('2025-11-01'), new Date('2025-11-21')], 
+                            [new Date('2025-11-21'), new Date('2025-11-26')],
+                            [new Date('2025-11-27'), new Date('2025-11-27T23:59:00')]
+                        ],
+                        backgroundColor: [
+                            'rgba(20, 184, 166, 0.7)',
+                            'rgba(2, 132, 199, 0.7)',
+                            'rgba(217, 119, 6, 0.7)',
+                            'rgba(217, 70, 239, 0.7)',
+                            'rgba(220, 38, 38, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(20, 184, 166)',
+                            'rgb(2, 132, 199)',
+                            'rgb(217, 119, 6)',
+                            'rgb(217, 70, 239)',
+                            'rgb(220, 38, 38)'
+                        ],
+                        borderWidth: 1,
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.8
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                tooltipFormat: 'MMM dd'
+                            },
+                            min: '2025-10-27',
+                            max: '2025-11-28',
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const item = context.raw;
+                                    const start = new Date(item[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    const end = new Date(item[1]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                    if (start === end) return `${context.label}: ${start}`;
+                                    return `${context.label}: ${start} to ${end}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
