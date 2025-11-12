@@ -14,15 +14,15 @@
         - Report Info: All tasks from Phases 1-4. Goal: Track completion. Presentation: Interactive checklists. Interaction: Clickable checkboxes. Justification: Transforms the plan into a functional to-do list. Method: HTML/JS.
         - Report Info: Task completion status. Goal: Show overall progress. Viz: HTML Progress Bar. Interaction: Updates dynamically when any task checkbox is clicked. Justification: Motivates the user and shows progress at a glance. Method: HTML/JS.
         - New Feature: Dynamic Image Gallery. Goal: Display photos from a database. Presentation: Responsive grid. Interaction: Click "Past Events" tab. A fetch() call is made to an Azure Function. The returned JSON is used to dynamically build the grid. Justification: The site is now "robust" and database-driven. Method: JS (fetch API).
-        - New Feature: Dotted-Circle Countdown Clock. Goal: Match user-provided image. Viz: 4 <canvas> elements. Interaction: Dynamically drawn with JS `requestAnimationFrame` to show circular progress. Justification: High-impact visual upgrade. Method: HTML Canvas API / JS.
+        - New Feature: Horizontal Countdown Clock. Goal: Match user-provided image. Viz: 4 text blocks. Interaction: Dynamically updated with JS `setInterval`. Justification: Cleaner, simpler horizontal layout. Method: HTML/JS.
         - New Feature: Background Image. Goal: Match user-provided theme. Style: CSS `background-image` with cover and fixed properties. Justification: Enhances thematic feel.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            /* Added background image */
-            background-image: url('happy-thanksgiving-background-2025.jpg');
+            /* Updated background image to pull from Azure Blob Storage */
+            background-image: url('https://howardstorage01.blob.core.windows.net/gallery01/happy-thanksgiving-background-2025.jpg');
             background-size: cover;
             background-position: center center;
             background-attachment: fixed; /* Keeps image stationary on scroll */
@@ -45,15 +45,17 @@
             height: 350px;
             max-height: 50vh;
         }
-        /* Navigation Links */
+        
+        /* New Square Button Navigation */
         .nav-menu {
-            @apply flex flex-col items-center space-y-2 my-8;
+            @apply grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 my-8;
         }
-        .nav-link {
-            @apply text-lg font-medium text-gray-700 bg-white bg-opacity-80 px-4 py-1 rounded-md hover:text-emerald-700 hover:bg-opacity-100 cursor-pointer shadow;
+        .nav-button {
+            @apply flex items-center justify-center p-4 h-24 w-full bg-white bg-opacity-90 rounded-lg shadow-md text-lg font-semibold text-center text-gray-700 transition-all duration-200 ease-in-out;
+            @apply hover:shadow-lg hover:text-emerald-700 hover:scale-105;
         }
-        .nav-link.active {
-            @apply text-emerald-600 font-bold bg-white bg-opacity-100;
+        .nav-button.active {
+            @apply bg-emerald-600 text-white font-bold scale-105 shadow-lg;
         }
         
         .gallery-item {
@@ -86,26 +88,18 @@
             @apply bg-emerald-600;
         }
         
-        /* New Dotted Countdown Clock Styles */
+        /* Horizontal Countdown Clock Styles */
         #countdown-clock {
-            @apply flex flex-wrap justify-center gap-4 md:gap-8 my-8;
+            @apply flex flex-wrap justify-center gap-4 md:gap-8 my-6;
         }
         .countdown-unit {
-            @apply text-center w-24 md:w-32;
-        }
-        .countdown-canvas-wrapper {
-            @apply relative w-24 h-24 md:w-32 md:h-32 bg-white bg-opacity-70 rounded-full shadow-inner;
-        }
-        .countdown-canvas-wrapper canvas {
-            @apply absolute top-0 left-0 w-full h-full;
+            @apply text-center bg-white bg-opacity-90 p-4 rounded-lg shadow-md w-20 md:w-24;
         }
         .countdown-value {
-            /* Using a specific font for the 'digital' look */
-            font-family: 'Orbitron', sans-serif;
-            @apply absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-3xl md:text-5xl font-bold text-emerald-800;
+            @apply text-3xl md:text-5xl font-bold text-emerald-700;
         }
         .countdown-label {
-            @apply text-sm font-bold text-gray-900 bg-white bg-opacity-70 px-2 py-1 rounded-md uppercase tracking-wider mt-3;
+            @apply text-xs font-medium text-gray-500 uppercase tracking-wider;
         }
 
         /* Spinner for Gallery */
@@ -122,12 +116,8 @@
             100% { transform: rotate(360deg); }
         }
     </style>
-    <!-- Import Orbitron font for the clock -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-amber-50 text-stone-800">
+<body class="text-stone-800">
 
     <div class="content-wrapper mt-4 mb-4">
         
@@ -137,45 +127,33 @@
             <p class="text-lg text-gray-800 font-medium mt-2" style="text-shadow: 1px 1px 2px rgba(255,255,255,0.5);">Wentworth Green Clubhouse | Thursday, November 27, 2025</p>
         </header>
 
-        <!-- New Dotted Countdown Clock -->
+        <!-- Horizontal Countdown Clock -->
         <div id="countdown-clock">
             <div class="countdown-unit">
-                <div class="countdown-canvas-wrapper">
-                    <canvas id="countdown-days-canvas" width="160" height="160"></canvas>
-                    <div id="countdown-days" class="countdown-value">--</div>
-                </div>
+                <div id="countdown-days" class="countdown-value">--</div>
                 <div class="countdown-label">Days</div>
             </div>
             <div class="countdown-unit">
-                <div class="countdown-canvas-wrapper">
-                    <canvas id="countdown-hours-canvas" width="160" height="160"></canvas>
-                    <div id="countdown-hours" class="countdown-value">--</div>
-                </div>
+                <div id="countdown-hours" class="countdown-value">--</div>
                 <div class="countdown-label">Hours</div>
             </div>
             <div class="countdown-unit">
-                <div class="countdown-canvas-wrapper">
-                    <canvas id="countdown-minutes-canvas" width="160" height="160"></canvas>
-                    <div id="countdown-minutes" class="countdown-value">--</div>
-                </div>
+                <div id="countdown-minutes" class="countdown-value">--</div>
                 <div class="countdown-label">Minutes</div>
             </div>
             <div class="countdown-unit">
-                <div class="countdown-canvas-wrapper">
-                    <canvas id="countdown-seconds-canvas" width="160" height="160"></canvas>
-                    <div id="countdown-seconds" class="countdown-value">--</div>
-                </div>
+                <div id="countdown-seconds" class="countdown-value">--</div>
                 <div class="countdown-label">Seconds</div>
             </div>
         </div>
 
-        <!-- Navigation -->
+        <!-- Square Button Navigation -->
         <nav class="nav-menu" id="nav-tabs">
-            <a class="nav-link active" data-target="dashboard">1. Dashboard</a>
-            <a class="nav-link" data-target="tasks">2. Task List</a>
-            <a class="nav-link" data-target="eventday">3. Event Day</a>
-            <a class="nav-link" data-target="roles">4. Roles & Supplies</a>
-            <a class="nav-link" data-target="gallery">5. Past Events</a>
+            <button class="nav-button active" data-target="dashboard">Dashboard</button>
+            <button class="nav-button" data-target="tasks">Task List</button>
+            <button class="nav-button" data-target="eventday">Event Day</button>
+            <button class="nav-button" data-target="roles">Roles & Supplies</button>
+            <button class="nav-button" data-target="gallery">Past Events</button>
         </nav>
 
         <!-- Content Sections -->
@@ -531,7 +509,7 @@
                     <!-- Error message container -->
                     <div id="gallery-error" class="hidden col-span-1 sm:col-span-2 lg:col-span-3 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
                         <strong class="font-bold">Error:</strong>
-                        <span id="gallery-error-message" class="block sm:inline">Could not load photos.</span>
+                        <span id="gallery-error-message" class="block sm:inline">Could not load photos from the server. Please try again later.</span>
                     </div>
                     <!-- Images will be injected here by JavaScript -->
                 </div>
@@ -547,101 +525,37 @@
             const galleryFunctionUrl = "https://getimages-d4b8bea4f7heg2fs.canadacentral-01.azurewebsites.net/api/HttpTrigger1";
             // === End Configuration ===
 
-            // --- New Dotted Countdown Clock ---
-            const clock = {
-                days: { el: document.getElementById('countdown-days'), canvas: document.getElementById('countdown-days-canvas'), max: 365 },
-                hours: { el: document.getElementById('countdown-hours'), canvas: document.getElementById('countdown-hours-canvas'), max: 24 },
-                minutes: { el: document.getElementById('countdown-minutes'), canvas: document.getElementById('countdown-minutes-canvas'), max: 60 },
-                seconds: { el: document.getElementById('countdown-seconds'), canvas: document.getElementById('countdown-seconds-canvas'), max: 60 }
-            };
+            // --- Horizontal Countdown Clock ---
+            const daysEl = document.getElementById('countdown-days');
+            const hoursEl = document.getElementById('countdown-hours');
+            const minutesEl = document.getElementById('countdown-minutes');
+            const secondsEl = document.getElementById('countdown-seconds');
 
-            const canvasSize = 160;
-            const radius = 70;
-            const lineWidth = 4;
-            const dotCount = 60; // Number of dots in the circle
-            const dotRadius = 2;
-            const startAngle = -0.5 * Math.PI; // Start at the top
-            const bgDotColor = '#cbd5e1'; // gray-300
-            const fgDotColor = '#059669'; // emerald-600
-
-            function drawDottedCircle(canvas, progress) {
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvasSize, canvasSize);
-                
-                const center = canvasSize / 2;
-                const activeDotCount = Math.round(dotCount * progress);
-
-                for (let i = 0; i < dotCount; i++) {
-                    const angle = startAngle + (i / dotCount) * 2 * Math.PI;
-                    const x = center + Math.cos(angle) * radius;
-                    const y = center + Math.sin(angle) * radius;
-                    
-                    ctx.beginPath();
-                    ctx.arc(x, y, dotRadius, 0, 2 * Math.PI);
-                    
-                    // Use foreground color for active dots, background for inactive
-                    ctx.fillStyle = i < activeDotCount ? fgDotColor : bgDotColor;
-                    ctx.fill();
-                }
-            }
-
-            let lastTimestamp = 0;
-            let countdownAnimationId;
-            function updateCountdown(timestamp) {
-                // Throttle rendering to reduce CPU load
-                if (timestamp - lastTimestamp < 100) { // Update ~10 times/sec
-                     countdownAnimationId = requestAnimationFrame(updateCountdown);
-                     return;
-                }
-                lastTimestamp = timestamp;
-
+            function updateCountdown() {
                 const now = new Date();
                 const diff = eventDate - now;
 
                 if (diff <= 0) {
-                    clock.days.el.textContent = '00';
-                    clock.hours.el.textContent = '00';
-                    clock.minutes.el.textContent = '00';
-                    clock.seconds.el.textContent = '00';
-                    Object.values(clock).forEach(unit => drawDottedCircle(unit.canvas, 0));
-                    cancelAnimationFrame(countdownAnimationId); // Stop the animation
-                    return; 
+                    daysEl.textContent = '00';
+                    hoursEl.textContent = '00';
+                    minutesEl.textContent = '00';
+                    secondsEl.textContent = '00';
+                    clearInterval(countdownInterval);
+                    return;
                 }
 
-                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((diff % (1000 * 60)) / 1000);
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-                // Calculate progress for each circle
-                const sProgress = s / clock.seconds.max;
-                const mProgress = m / clock.minutes.max;
-                const hProgress = h / clock.hours.max;
-                
-                // Calculate max days for the arc
-                const startOfYear = new Date(eventDate.getFullYear(), 0, 0);
-                const endOfYear = new Date(eventDate.getFullYear(), 11, 31);
-                const totalDaysInYear = (endOfYear - startOfYear) / (1000 * 60 * 60 * 24);
-                clock.days.max = totalDaysInYear; // e.g., 365 or 366
-                
-                const dProgress = d / clock.days.max;
-
-                // Update text
-                clock.days.el.textContent = String(d).padStart(2, '0');
-                clock.hours.el.textContent = String(h).padStart(2, '0');
-                clock.minutes.el.textContent = String(m).padStart(2, '0');
-                clock.seconds.el.textContent = String(s).padStart(2, '0');
-
-                // Redraw circles
-                drawDottedCircle(clock.days.canvas, dProgress);
-                drawDottedCircle(clock.hours.canvas, hProgress);
-                drawDottedCircle(clock.minutes.canvas, mProgress);
-                drawDottedCircle(clock.seconds.canvas, sProgress);
-
-                countdownAnimationId = requestAnimationFrame(updateCountdown); // Continue the loop
+                daysEl.textContent = String(days).padStart(2, '0');
+                hoursEl.textContent = String(hours).padStart(2, '0');
+                minutesEl.textContent = String(minutes).padStart(2, '0');
+                secondsEl.textContent = String(seconds).padStart(2, '0');
             }
-            countdownAnimationId = requestAnimationFrame(updateCountdown); // Start the animation loop
-
+            const countdownInterval = setInterval(updateCountdown, 1000);
+            updateCountdown();
 
             // --- Days to Go Metric (Simpler) ---
             const today = new Date();
@@ -651,8 +565,8 @@
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             document.getElementById('days-to-go').textContent = diffDays > 0 ? diffDays : 0;
 
-            // --- Tab Navigation ---
-            const tabs = document.querySelectorAll('.nav-link');
+            // --- Square Button Navigation ---
+            const navButtons = document.querySelectorAll('.nav-button');
             const contents = {
                 dashboard: document.getElementById('content-dashboard'),
                 tasks: document.getElementById('content-tasks'),
@@ -662,13 +576,12 @@
             };
             let galleryLoaded = false; // Flag to prevent multiple fetches
 
-            tabs.forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    navButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
                     
-                    const target = tab.dataset.target;
+                    const target = button.dataset.target;
                     Object.values(contents).forEach(c => c.classList.add('hidden'));
                     contents[target].classList.remove('hidden');
 
@@ -823,10 +736,9 @@
                     });
 
                 } catch (error) {
-                    console.error('Error fetching gallery images:', error);
-                    // Hide loader and show error
+                    console.error('Failed to load gallery:', error);
                     loader.classList.add('hidden');
-                    errorMessageEl.textContent = "Could not load photos from the server. Please try again later.";
+                    errorMessageEl.textContent = error.message || "Could not load photos from the server. Please try again later.";
                     errorEl.classList.remove('hidden');
                 }
             }
@@ -834,5 +746,6 @@
     </script>
 </body>
 </html>
+
 
 
